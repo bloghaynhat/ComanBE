@@ -175,3 +175,5 @@ SIMPLE_JWT = {
     'AUDIENCE': None,
     'ISSUER': None,
 }
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
