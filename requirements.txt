@@ -1,4 +1,5 @@
 django
 djangorestframework
 environs
-pip freeze > requirements.txt
+gunicorn
+psycopg2
