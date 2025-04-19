@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: coman-backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn mysite.wsgi:application
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: coman-backend # 👉 Tên database bạn đã tạo trên Render
+          property: connectionString
+      - key: SECRET_KEY
+        value: your-secret-key
+      - key: DEBUG
+        value: "False"
