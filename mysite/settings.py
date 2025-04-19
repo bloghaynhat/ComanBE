@@ -63,6 +63,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
 ROOT_URLCONF = "mysite.urls"
@@ -158,6 +159,7 @@ CLOUDINARY_STORAGE = {
 # Cor
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
+    'https://comanbe.onrender.com'
 ]
 
 # Cấu hình cho JWT
