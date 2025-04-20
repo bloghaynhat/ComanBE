@@ -159,7 +159,8 @@ CLOUDINARY_STORAGE = {
 # Cor
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
-    'https://comanbe.onrender.com'
+    'https://comanbe.onrender.com',
+    'https://coman.vercel.app'
 ]
 
 # Cấu hình cho JWT
