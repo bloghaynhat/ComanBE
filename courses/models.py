@@ -72,3 +72,45 @@ class LessonProgress(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.lesson.title} - {'✅' if self.watched else '❌'}"
+
+# Event
+class Event(models.Model):
+    CATEGORY_CHOICES = [
+        ('workshop', 'Workshop'),
+        ('seminar', 'Seminar'),
+        ('webinar', 'Webinar'),
+        ('conference', 'Conference'),
+        # ... thêm nếu có nhiều loại khác
+    ]
+    
+    title = models.CharField(max_length=255)
+    date = models.DateField()
+    time = models.CharField(max_length=50)
+    location = models.CharField(max_length=255)
+    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
+    image_url = models.URLField(blank=True, null=True)
+    image_upload = models.ImageField(upload_to='event_images/', blank=True, null=True)
+    instructor = models.CharField(max_length=100)
+    attendees = models.PositiveIntegerField(default=0)
+    description = models.TextField()
+    additional_description = models.TextField()
+    duration = models.CharField(max_length=50)
+    target_audience = models.TextField()
+    prerequisites = models.TextField()
+    price = models.CharField(max_length=50)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_events')  # admin tạo
+
+    def image(self):
+        return self.image_upload.url if self.image_upload else self.image_url
+
+# Moi sự kiện 1 người đăng kí 1 lần    
+class EventRegister(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    event = models.ForeignKey(Event, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'event')  # mỗi user chỉ đăng ký 1 event 1 lần
+
+    def __str__(self):
+        return f"{self.user.username} đăng ký {self.event.title}"

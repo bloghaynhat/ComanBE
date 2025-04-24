@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from .models import Course, Enrollment, Lesson, LessonProgress, Section
+from .models import Course, Enrollment, Lesson, LessonProgress, Section, Event, EventRegister
 from django.contrib.auth.models import User
 
 class CourseSerializer(serializers.ModelSerializer):
@@ -26,6 +26,19 @@ class LessonProgressSerializer(serializers.ModelSerializer):
 class SectionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Section
+        fields = '__all__'
+
+class EventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Event
+        fields = '__all__'
+        
+class EventRegisterSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField(read_only=True)  # hiển thị username
+    event = serializers.StringRelatedField(read_only=True)
+
+    class Meta:
+        model = EventRegister
         fields = '__all__'
         
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):

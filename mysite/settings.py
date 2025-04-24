@@ -48,7 +48,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "courses",
     'rest_framework_simplejwt',
-        'cloudinary',
+    'cloudinary',
     'cloudinary_storage',
     'corsheaders'
 ]

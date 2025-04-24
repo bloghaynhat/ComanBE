@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import CourseViewSet, EnrollmentViewSet, LessonProgressViewSet, SectionViewSet, LessonViewSet, CustomTokenObtainPairView
+from .views import CourseViewSet, EnrollmentViewSet, LessonProgressViewSet, SectionViewSet, LessonViewSet, EventViewSet, EventRegisterViewSet, CustomTokenObtainPairView
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views_auth import CurrentUserView
 
@@ -10,6 +10,8 @@ router.register(r'enrollments', EnrollmentViewSet)
 router.register(r'lessons', LessonViewSet)
 router.register(r'sections', SectionViewSet)
 router.register(r'lessonprogresses', LessonProgressViewSet)
+router.register(r'events', EventViewSet)
+router.register(r'event-registers', EventRegisterViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
