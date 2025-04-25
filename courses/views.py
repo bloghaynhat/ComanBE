@@ -1,4 +1,5 @@
 from rest_framework import viewsets, permissions
+from rest_framework.decorators import action
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import CustomTokenObtainPairSerializer
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAdminUser
@@ -57,6 +58,23 @@ class EventRegisterViewSet(viewsets.ModelViewSet):
         register = EventRegister.objects.create(user=user, event_id=event_id)
         serializer = self.get_serializer(register)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
+
+    def destroy(self, request, *args, **kwargs):
+        user = request.user
+        event_id = request.data.get("event_id")
+        register = EventRegister.objects.filter(user=user, event_id=event_id).first()
+
+        if not register:
+            return Response({"detail": "Bạn chưa đăng ký sự kiện này."}, status=404)
+
+        register.delete()
+        return Response({"detail": "Đã hủy đăng ký sự kiện."}, status=204)
+
+    @action(detail=False, methods=['get'], url_path='is-registered/(?P<event_id>[^/.]+)')
+    def is_registered(self, request, event_id=None):
+        user = request.user
+        registered = EventRegister.objects.filter(user=user, event_id=event_id).exists()
+        return Response({"registered": registered})
+
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer

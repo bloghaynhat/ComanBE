@@ -102,6 +102,9 @@ class Event(models.Model):
 
     def image(self):
         return self.image_upload.url if self.image_upload else self.image_url
+    
+    def __str__(self):
+        return self.title
 
 # Moi sự kiện 1 người đăng kí 1 lần    
 class EventRegister(models.Model):
