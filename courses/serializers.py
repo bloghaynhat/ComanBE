@@ -36,7 +36,8 @@ class EventSerializer(serializers.ModelSerializer):
 class EventRegisterSerializer(serializers.ModelSerializer):
     user = serializers.StringRelatedField(read_only=True)  # hiển thị username
     event = serializers.StringRelatedField(read_only=True)
-
+    event_id = serializers.IntegerField(source='event.id', read_only=True)
+    
     class Meta:
         model = EventRegister
         fields = '__all__'

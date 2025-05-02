@@ -87,7 +87,18 @@ class EventRegisterViewSet(viewsets.ModelViewSet):
 
         register.delete()
         return Response({"detail": "Đã hủy đăng ký sự kiện."}, status=204)
+    
+    @action(detail=False, methods=['delete'], url_path='cancel/(?P<event_id>[^/.]+)')
+    def cancel_registration(self, request, event_id=None):
+        user = request.user
+        register = EventRegister.objects.filter(user=user, event_id=event_id).first()
 
+        if not register:
+            return Response({"detail": "Bạn chưa đăng ký sự kiện này."}, status=404)
+
+        register.delete()
+        return Response({"detail": "Đã hủy đăng ký sự kiện."}, status=204)
+    
     @action(detail=False, methods=['get'], url_path='is-registered/(?P<event_id>[^/.]+)')
     def is_registered(self, request, event_id=None):
         user = request.user
