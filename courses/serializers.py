@@ -40,7 +40,20 @@ class EventRegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = EventRegister
         fields = '__all__'
-        
+
+# Section lồng lesstion theo course_id
+class SectionWithLessonsSerializer(serializers.ModelSerializer):
+    lessons = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Section
+        fields = ['id', 'title', 'course', 'lessons']
+
+    def get_lessons(self, section):
+        lessons = Lesson.objects.filter(section=section)
+        return LessonSerializer(lessons, many=True).data
+    
+            
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)

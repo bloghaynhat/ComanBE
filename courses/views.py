@@ -6,12 +6,24 @@ from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAdminUser
 from rest_framework.response import Response
 
 from .models import Course, Enrollment, Lesson, LessonProgress, Section, Event, EventRegister
-from .serializers import CourseSerializer, EnrollmentSerializer, LessonSerializer, LessonProgressSerializer, SectionSerializer, EventSerializer, EventRegisterSerializer
+from .serializers import CourseSerializer, EnrollmentSerializer, LessonSerializer, LessonProgressSerializer, SectionSerializer, EventSerializer, EventRegisterSerializer, SectionWithLessonsSerializer
 
 
 class CourseViewSet(viewsets.ModelViewSet):
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
+    
+    @action(detail=True, methods=['get'], url_path="sections")
+    def get_sections(self, request, pk=None):
+        sections = Section.objects.filter(course_id=pk)
+        serializer = SectionSerializer(sections, many=True)
+        return Response(serializer.data)
+       
+    @action(detail=True, methods=["get"], url_path="sections-with-lessons")
+    def sections_with_lessons(self, request, pk=None):
+        sections = Section.objects.filter(course_id=pk)
+        serializer = SectionWithLessonsSerializer(sections, many=True)
+        return Response(serializer.data)
     
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -33,6 +45,12 @@ class LessonProgressViewSet(viewsets.ModelViewSet):
 class SectionViewSet(viewsets.ModelViewSet):
     queryset = Section.objects.all()
     serializer_class = SectionSerializer
+    
+    @action(detail=True, methods=["get"], url_path="lessons")
+    def get_lessons(self, request, pk=None):
+        lessons = Lesson.objects.filter(section_id=pk)
+        serializer = LessonSerializer(lessons, many=True)
+        return Response(serializer.data)
 
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all()
