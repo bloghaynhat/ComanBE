@@ -7,10 +7,10 @@ from .serializers import CustomTokenObtainPairSerializer
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAdminUser
 from rest_framework.response import Response
 from django.db.models import Sum, Count
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 
 from .models import Course, Enrollment, Lesson, LessonProgress, Section, Event, EventRegister
-from .serializers import CourseSerializer, EnrollmentSerializer, LessonSerializer, LessonProgressSerializer, SectionSerializer, EventSerializer, EventRegisterSerializer, SectionWithLessonsSerializer
+from .serializers import CourseSerializer, EnrollmentSerializer, LessonSerializer, LessonProgressSerializer, SectionSerializer, EventSerializer, EventRegisterSerializer, SectionWithLessonsSerializer, UserSerializer
 
 
 class CourseViewSet(viewsets.ModelViewSet):
@@ -164,12 +164,22 @@ class EventRegisterViewSet(viewsets.ModelViewSet):
         user = request.user
         event_id = request.data.get("event_id")
 
-        if EventRegister.objects.filter(user=user, event_id=event_id).exists():
+        # Kiểm tra sự kiện có tồn tại trong cơ sở dữ liệu không
+        try:
+            event = Event.objects.get(id=event_id)  # Tìm sự kiện theo event_id
+        except Event.DoesNotExist:
+            return Response({"detail": "Sự kiện không tồn tại."}, status=400)
+
+        # Kiểm tra nếu người dùng đã đăng ký sự kiện này
+        if EventRegister.objects.filter(user=user, event=event).exists():
             return Response({"detail": "Bạn đã đăng ký sự kiện này rồi."}, status=400)
 
-        register = EventRegister.objects.create(user=user, event_id=event_id)
+        # Tạo bản ghi đăng ký sự kiện mới
+        register = EventRegister.objects.create(user=user, event=event)
         serializer = self.get_serializer(register)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
 
     def destroy(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
@@ -287,4 +297,22 @@ class DashboardStatsView(APIView):
             }
         }
         return Response(data)
-    
+
+class UserAPIView(APIView):
+    def get(self, request, user_id=None):
+        # Lọc user trong group 'user'
+        group = Group.objects.get(name='user')
+        
+        if user_id:
+            try:
+                # Lấy user theo ID và kiểm tra group
+                user = User.objects.get(pk=user_id, groups=group)
+                serializer = UserSerializer(user)
+                return Response(serializer.data)
+            except User.DoesNotExist:
+                return Response({'error': 'User not found or does not belong to the "user" group'}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            # Lọc tất cả user thuộc group 'user'
+            users = User.objects.filter(groups=group)
+            serializer = UserSerializer(users, many=True)
+            return Response(serializer.data)

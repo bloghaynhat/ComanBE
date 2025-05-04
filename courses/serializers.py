@@ -70,6 +70,11 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return data
     
 class UserSerializer(serializers.ModelSerializer):
+    course_count = serializers.SerializerMethodField()
+    
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_active', 'date_joined', 'course_count']
+        
+    def get_course_count(self, obj):
+        return obj.enrollments.count()
