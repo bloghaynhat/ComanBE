@@ -9,7 +9,7 @@ class CourseSerializer(serializers.ModelSerializer):
         fields = '__all__'
         
 class EnrollmentSerializer(serializers.ModelSerializer):
-    # course = CourseSerializer(read_only=True)  # Trả về thông tin chi tiết khóa học
+    course = CourseSerializer(read_only=True)  # Trả về thông tin chi tiết khóa học
 
     class Meta:
         model = Enrollment

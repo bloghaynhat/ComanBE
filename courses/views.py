@@ -6,7 +6,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import CustomTokenObtainPairSerializer
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAdminUser
 from rest_framework.response import Response
-from django.db.models import Sum
+from django.db.models import Sum, Count
 from django.contrib.auth.models import User
 
 from .models import Course, Enrollment, Lesson, LessonProgress, Section, Event, EventRegister
@@ -33,7 +33,58 @@ class CourseViewSet(viewsets.ModelViewSet):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsAdminUser()]
         return [IsAuthenticatedOrReadOnly()]
+    
+    @action(detail=False, methods=['get'], url_path='latest-with-students', permission_classes=[permissions.AllowAny])
+    def student_counts(self, request):
+        top = request.query_params.get('top')
+        courses = Course.objects.annotate(student_count=Count('enrollments')).order_by('-created_at')
 
+        if top and top.isdigit():
+            courses = courses[:int(top)]
+
+        data = [
+            {
+                "course_id": course.id,
+                "title": course.title,
+                "image": course.image.url if course.image else None,
+                "created_at": course.created_at,
+                "price": course.price,
+                "student_count": course.student_count
+            } for course in courses
+        ]
+        return Response(data)
+    
+    @action(detail=False, methods=['get'], url_path='top-revenue', permission_classes=[permissions.AllowAny])
+    def top_revenue_courses(self, request):
+        top = request.query_params.get('top', '5')  # mặc định là chuỗi '5'
+
+        # Chuyển top sang kiểu int và kiểm tra có hợp lệ không
+        try:
+            top = int(top)
+        except ValueError:
+            return Response({"detail": "Tham số 'top' phải là một số nguyên hợp lệ."}, status=400)
+
+        # Tính tổng doanh thu cho mỗi khóa học từ các enrollments (cộng dồn giá của khóa học cho mỗi enrollment)
+        courses = Course.objects.annotate(
+            total_revenue=Sum('enrollments__course__price')
+        ).order_by('total_revenue')
+
+        # Lọc số lượng top khóa học
+        courses = courses[:top]
+
+        # Trả về dữ liệu khóa học với doanh thu
+        data = [
+            {
+                "course_id": course.id,
+                "title": course.title,
+                "created_at": course.created_at,
+                "total_revenue": course.total_revenue if course.total_revenue else 0
+            } for course in courses
+        ]
+        return Response(data)
+
+
+    
 class EnrollmentViewSet(viewsets.ModelViewSet):
     queryset = Enrollment.objects.all()
     serializer_class = EnrollmentSerializer
