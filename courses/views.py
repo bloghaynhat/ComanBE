@@ -179,14 +179,16 @@ class EventRegisterViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(register)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-
-
     def destroy(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return Response({"detail": "Bạn cần đăng nhập để hủy đăng ký."}, status=401)
 
         user = request.user
-        event_id = request.data.get("event_id")
+        event_id = kwargs.get("pk")  # Lấy event_id từ URL
+
+        if not event_id:
+            return Response({"detail": "Không có event_id trong yêu cầu."}, status=400)
+
         register = EventRegister.objects.filter(user=user, event_id=event_id).first()
 
         if not register:
