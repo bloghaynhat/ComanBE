@@ -1,9 +1,13 @@
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
+from rest_framework.views import APIView
+from django.utils.timezone import now, timedelta
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import CustomTokenObtainPairSerializer
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAdminUser
 from rest_framework.response import Response
+from django.db.models import Sum
+from django.contrib.auth.models import User
 
 from .models import Course, Enrollment, Lesson, LessonProgress, Section, Event, EventRegister
 from .serializers import CourseSerializer, EnrollmentSerializer, LessonSerializer, LessonProgressSerializer, SectionSerializer, EventSerializer, EventRegisterSerializer, SectionWithLessonsSerializer
@@ -33,6 +37,36 @@ class CourseViewSet(viewsets.ModelViewSet):
 class EnrollmentViewSet(viewsets.ModelViewSet):
     queryset = Enrollment.objects.all()
     serializer_class = EnrollmentSerializer
+    permission_classes = [permissions.AllowAny]  # Cho phép truy cập công khai
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_authenticated:
+            return Enrollment.objects.filter(user=user)
+        return Enrollment.objects.all()
+
+    def create(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return Response({"detail": "Bạn cần đăng nhập để mua khóa học."}, status=401)
+
+        user = request.user
+        course_id = request.data.get("course_id")
+
+        if Enrollment.objects.filter(user=user, course_id=course_id).exists():
+            return Response({"detail": "Bạn đã đăng ký khóa học này rồi."}, status=400)
+
+        register = Enrollment.objects.create(user=user, course_id=course_id)
+        serializer = self.get_serializer(register)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['get'], url_path='is-enrolled/(?P<course_id>[^/.]+)')
+    def is_enrolled(self, request, course_id=None):
+        user = request.user
+        if not user.is_authenticated:
+            return Response({"enrolled": False})
+        enrolled = Enrollment.objects.filter(user=user, course_id=course_id).exists()
+        return Response({"enrolled": enrolled})
+
     
 class LessonViewSet(viewsets.ModelViewSet):
     queryset = Lesson.objects.all()
@@ -64,9 +98,18 @@ class EventViewSet(viewsets.ModelViewSet):
 class EventRegisterViewSet(viewsets.ModelViewSet):
     queryset = EventRegister.objects.all()
     serializer_class = EventRegisterSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]  # Cho phép truy cập công khai
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_authenticated:
+            return EventRegister.objects.filter(user=user)
+        return EventRegister.objects.all()
 
     def create(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return Response({"detail": "Bạn cần đăng nhập để đăng ký sự kiện."}, status=401)
+
         user = request.user
         event_id = request.data.get("event_id")
 
@@ -78,6 +121,9 @@ class EventRegisterViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return Response({"detail": "Bạn cần đăng nhập để hủy đăng ký."}, status=401)
+
         user = request.user
         event_id = request.data.get("event_id")
         register = EventRegister.objects.filter(user=user, event_id=event_id).first()
@@ -87,23 +133,107 @@ class EventRegisterViewSet(viewsets.ModelViewSet):
 
         register.delete()
         return Response({"detail": "Đã hủy đăng ký sự kiện."}, status=204)
-    
-    @action(detail=False, methods=['delete'], url_path='cancel/(?P<event_id>[^/.]+)')
-    def cancel_registration(self, request, event_id=None):
-        user = request.user
-        register = EventRegister.objects.filter(user=user, event_id=event_id).first()
 
-        if not register:
-            return Response({"detail": "Bạn chưa đăng ký sự kiện này."}, status=404)
-
-        register.delete()
-        return Response({"detail": "Đã hủy đăng ký sự kiện."}, status=204)
-    
     @action(detail=False, methods=['get'], url_path='is-registered/(?P<event_id>[^/.]+)')
     def is_registered(self, request, event_id=None):
         user = request.user
+        if not user.is_authenticated:
+            return Response({"registered": False})
         registered = EventRegister.objects.filter(user=user, event_id=event_id).exists()
         return Response({"registered": registered})
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+    
+# Tổng quan 4 ô 
+class DashboardStatsView(APIView):
+    def get(self, request):
+        today = now().date()
+
+        # Tuần này
+        start_of_week = today - timedelta(days=today.weekday())
+        end_of_week = start_of_week + timedelta(days=7)
+
+        # Tuần trước
+        start_of_last_week = start_of_week - timedelta(days=7)
+        end_of_last_week = start_of_week
+        
+        # Lấy ngày đầu tháng này
+        start_of_this_month = today.replace(day=1)
+
+        # Lấy ngày cuối tháng trước = ngày đầu tháng này - 1
+        end_of_last_month = start_of_this_month - timedelta(days=1)
+
+        # Ngày đầu tháng trước
+        start_of_last_month = end_of_last_month.replace(day=1)
+
+        # Doanh thu: lấy trong tháng hiện tại
+        start_of_month = today.replace(day=1)
+
+        # -------- THỐNG KÊ -------- #
+        total_courses = Course.objects.count()
+        new_courses_this_week = Course.objects.filter(created_at__range=(start_of_week, end_of_week)).count()
+        new_courses_last_week = Course.objects.filter(created_at__range=(start_of_last_week, end_of_last_week)).count()
+
+        total_users = User.objects.count()
+        new_users_this_week = User.objects.filter(date_joined__range=(start_of_week, end_of_week)).count()
+        new_users_last_week = User.objects.filter(date_joined__range=(start_of_last_week, end_of_last_week)).count()
+
+        total_enrollments = Enrollment.objects.count()
+        new_enrollments_this_week = Enrollment.objects.filter(enrolled_at__range=(start_of_week, end_of_week)).count()
+        new_enrollments_last_week = Enrollment.objects.filter(enrolled_at__range=(start_of_last_week, end_of_last_week)).count()
+
+        # Doanh thu tháng này
+        enrollments_this_month = Enrollment.objects.filter(enrolled_at__gte=start_of_month)
+        revenue = enrollments_this_month.aggregate(total=Sum('course__price'))['total'] or 0
+        # Truy vấn doanh thu tháng trước
+        enrollments_last_month = Enrollment.objects.filter(enrolled_at__range=(start_of_last_month, end_of_last_month))
+        revenue_last_month = enrollments_last_month.aggregate(total=Sum('course__price'))['total'] or 0
+
+        # -------- TÍNH % THAY ĐỔI -------- #
+        def percent_change(current, previous):
+            if previous == 0:
+                return "+∞%" if current > 0 else "0%"
+            change = ((current - previous) / previous) * 100
+            return f"{change:+.0f}%"
+
+        data = {
+            "total_courses": {
+                "title": "Tổng khóa học",
+                "icon": "BookOpen",
+                "value": total_courses,
+                "change": (
+                    f"-{new_courses_this_week - new_courses_last_week} so với tuần trước"
+                    if new_courses_this_week - new_courses_last_week < 0
+                    else f"+{new_courses_this_week - new_courses_last_week} so với tuần trước"
+                    )
+            },
+            "total_users": {
+                "title": "Tổng người dùng",
+                "icon": "Users",
+                "value": total_users,
+                "change": (
+                    f"-{new_users_this_week - new_users_last_week} so với tuần trước"
+                    if new_users_this_week - new_users_last_week < 0
+                    else f"+{new_users_this_week - new_users_last_week} so với tuần trước"
+                )
+            },
+            "monthly_revenue": {
+                "title": "Doanh thu tháng",
+                "icon": "DollarSign",
+                "value": f"{revenue:,.0f}đ",
+                "change": f"+{percent_change(revenue, revenue_last_month)} so với tháng trước"
+            },
+            "new_enrollments": {
+                "title": "Đăng kí mới",
+                "icon": "PlusCircle",
+                "value": total_enrollments,
+                "change": (
+                    f"-{new_enrollments_this_week - new_enrollments_last_week} so với tuần trước"
+                    if new_enrollments_this_week - new_enrollments_last_week < 0
+                    else f"+{new_enrollments_this_week - new_enrollments_last_week} so với tuần trước"
+                )
+            }
+        }
+        return Response(data)
+    

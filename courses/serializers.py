@@ -9,6 +9,8 @@ class CourseSerializer(serializers.ModelSerializer):
         fields = '__all__'
         
 class EnrollmentSerializer(serializers.ModelSerializer):
+    # course = CourseSerializer(read_only=True)  # Trả về thông tin chi tiết khóa học
+
     class Meta:
         model = Enrollment
         fields = '__all__'
@@ -34,7 +36,6 @@ class EventSerializer(serializers.ModelSerializer):
         fields = '__all__'
         
 class EventRegisterSerializer(serializers.ModelSerializer):
-    user = serializers.StringRelatedField(read_only=True)  # hiển thị username
     event = serializers.StringRelatedField(read_only=True)
     event_id = serializers.IntegerField(source='event.id', read_only=True)
     
