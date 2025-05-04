@@ -58,33 +58,30 @@ class CourseViewSet(viewsets.ModelViewSet):
     def top_revenue_courses(self, request):
         top = request.query_params.get('top', '5')  # mặc định là chuỗi '5'
 
-        # Chuyển top sang kiểu int và kiểm tra có hợp lệ không
         try:
             top = int(top)
         except ValueError:
             return Response({"detail": "Tham số 'top' phải là một số nguyên hợp lệ."}, status=400)
 
-        # Tính tổng doanh thu cho mỗi khóa học từ các enrollments (cộng dồn giá của khóa học cho mỗi enrollment)
         courses = Course.objects.annotate(
-            total_revenue=Sum('enrollments__course__price')
-        ).order_by('total_revenue')
+            total_revenue=Sum('enrollments__course__price'),
+            total_enrollments=Count('enrollments')
+        ).order_by('-total_revenue')  # Xếp giảm dần theo doanh thu
 
-        # Lọc số lượng top khóa học
         courses = courses[:top]
 
-        # Trả về dữ liệu khóa học với doanh thu
         data = [
             {
                 "course_id": course.id,
                 "title": course.title,
                 "created_at": course.created_at,
-                "total_revenue": course.total_revenue if course.total_revenue else 0
-            } for course in courses
+                "total_revenue": course.total_revenue if course.total_revenue else 0,
+                "total_enrollments": course.total_enrollments
+            }
+            for course in courses
         ]
         return Response(data)
 
-
-    
 class EnrollmentViewSet(viewsets.ModelViewSet):
     queryset = Enrollment.objects.all()
     serializer_class = EnrollmentSerializer
