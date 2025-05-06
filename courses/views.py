@@ -77,6 +77,7 @@ class CourseViewSet(viewsets.ModelViewSet):
             {
                 "course_id": course.id,
                 "title": course.title,
+                "image": course.image.url if course.image else None,
                 "created_at": course.created_at,
                 "total_revenue": course.total_revenue if course.total_revenue else 0,
                 "total_enrollments": course.total_enrollments
@@ -117,6 +118,37 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
             return Response({"enrolled": False})
         enrolled = Enrollment.objects.filter(user=user, course_id=course_id).exists()
         return Response({"enrolled": enrolled})
+
+    @action(detail=False, methods=['get'], url_path='paid', permission_classes=[permissions.AllowAny])
+    def paid_enrollments(self, request):
+        # Lấy group "user"
+        try:
+            user_group = Group.objects.get(name='user')
+        except Group.DoesNotExist:
+            return Response({"detail": "Group 'user' không tồn tại."}, status=400)
+
+        # Lấy enrollment thỏa điều kiện
+        enrollments = Enrollment.objects.select_related('course', 'user') \
+            .filter(
+                course__price__gt=0,
+                user__groups=user_group
+            ).order_by('-enrolled_at')
+
+        # Chuẩn bị dữ liệu trả về
+        data = [
+            {
+                "user_id": enrollment.user.id,
+                "username": enrollment.user.username,
+                "first_name": enrollment.user.first_name,
+                "last_name": enrollment.user.last_name,
+                "course_title": enrollment.course.title,
+                "price": enrollment.course.price,
+                "enrolled_at": enrollment.enrolled_at,
+            }
+            for enrollment in enrollments
+        ]
+
+        return Response(data)
 
     
 class LessonViewSet(viewsets.ModelViewSet):
