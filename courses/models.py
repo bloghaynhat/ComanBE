@@ -8,7 +8,7 @@ class Course(models.Model):
     description = models.TextField()
     image = models.ImageField(upload_to='course_img/', blank=True, null=True)
     is_paid = models.BooleanField(default=False)
-    price = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):

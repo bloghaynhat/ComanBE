@@ -168,8 +168,8 @@ CORS_ALLOWED_ORIGINS = [
 from datetime import timedelta
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),  # Thời gian sống của token
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),    # Thời gian sống của refresh token
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),  # Thời gian sống của token
+    'REFRESH_TOKEN_LIFETIME': timedelta(hours=8),    # Thời gian sống của refresh token
     'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': False,
     'UPDATE_LAST_LOGIN': False,
