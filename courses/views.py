@@ -56,19 +56,22 @@ class CourseViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'], url_path='top-revenue', permission_classes=[permissions.AllowAny])
     def top_revenue_courses(self, request):
-        top = request.query_params.get('top', '5')  # mặc định là chuỗi '5'
+        top = request.query_params.get('top')  # Nếu không truyền tham số top, nó sẽ là None
 
-        try:
-            top = int(top)
-        except ValueError:
-            return Response({"detail": "Tham số 'top' phải là một số nguyên hợp lệ."}, status=400)
-
-        courses = Course.objects.annotate(
-            total_revenue=Sum('enrollments__course__price'),
-            total_enrollments=Count('enrollments')
-        ).order_by('-total_revenue')  # Xếp giảm dần theo doanh thu
-
-        courses = courses[:top]
+        if top:
+            try:
+                top = int(top)
+            except ValueError:
+                return Response({"detail": "Tham số 'top' phải là một số nguyên hợp lệ."}, status=400)
+            courses = Course.objects.annotate(
+                total_revenue=Sum('enrollments__course__price'),
+                total_enrollments=Count('enrollments')
+            ).order_by('-total_revenue')[:top]  # Giới hạn số lượng theo 'top' nếu có
+        else:
+            courses = Course.objects.annotate(
+                total_revenue=Sum('enrollments__course__price'),
+                total_enrollments=Count('enrollments')
+            ).order_by('-total_revenue')  # Lấy tất cả khóa học nếu không có tham số 'top'
 
         data = [
             {
@@ -315,3 +318,25 @@ class UserAPIView(APIView):
             users = User.objects.filter(groups=group)
             serializer = UserSerializer(users, many=True)
             return Response(serializer.data)
+    
+    def patch(self, request, user_id=None):
+        group = Group.objects.get(name='user')
+        
+        if user_id:
+            try:
+                # Lấy user theo ID và kiểm tra group
+                user = User.objects.get(pk=user_id, groups=group)
+                
+                # Cập nhật trạng thái is_active từ dữ liệu request
+                is_active = request.data.get('is_active')
+                if is_active is not None:
+                    user.is_active = is_active
+                    user.save()
+                    return Response({'message': 'User status updated successfully'}, status=status.HTTP_200_OK)
+                else:
+                    return Response({'error': 'Missing is_active field'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            except User.DoesNotExist:
+                return Response({'error': 'User not found or does not belong to the "user" group'}, status=status.HTTP_404_NOT_FOUND)
+        
+        return Response({'error': 'User ID is required'}, status=status.HTTP_400_BAD_REQUEST)
